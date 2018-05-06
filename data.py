@@ -16,6 +16,7 @@ class LoaderConfig(object):
     batch_size = 1
     shuffle = False
     truncate_final_batch = False
+    cuda = False
 
     def __init__(self, map_labels=map_to_int):
         self.map_labels = map_to_int
@@ -63,7 +64,7 @@ class DataLoader(object):
 
     def __init__(self):
         super(DataLoader, self).__init__()
-        
+
     def iterator(self):
         raise NotImplementedError
 
@@ -93,6 +94,9 @@ class DirectoryLoader(object):
         self.dataset = dataset
         self.dataloader = dataloader
 
+        if config.cuda:
+            self.model.cuda()
+
     def iterator(self):
         # TODO: Add random seed.
 
@@ -105,6 +109,9 @@ class DirectoryLoader(object):
         for i, imgs in enumerate(dataloader):
             tensor, target = imgs
 
+            if self.config.cuda:
+                tensor = tensor.cuda()
+
             batch = {}
 
             batch['target'] = torch.LongTensor(list(map(map_labels, target.tolist())))
@@ -114,7 +121,7 @@ class DirectoryLoader(object):
             batch['avgpool_512'] = model(tensor).detach()
 
             yield batch
-        
+
 
 class HDF5Loader(object):
     def __init__(self, path, config):

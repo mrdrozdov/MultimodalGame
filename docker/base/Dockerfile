@@ -81,6 +81,7 @@ RUN conda install -y -c menpo opencv3 \
  && conda clean -ya
 
 USER root
+ENV PYTHONIOENCODING=utf8
 
 # Set the default command to python3
 CMD ["python3"]

@@ -2,6 +2,8 @@ import unittest
 
 from collections import Counter
 
+import torch
+
 from data import *
 
 
@@ -79,6 +81,18 @@ class TestDirectoryLoader(unittest.TestCase):
 
         self.assertFalse(tensor.requires_grad)
 
+    @unittest.skipIf(not torch.cuda.is_available(), "skipping cuda test")
+    def test_cuda(self):
+        config = DirectoryLoaderConfig.build_with("resnet18")
+        config.cuda = True
+        loader = DataLoader.build_with(self.path, self.source, config)
+
+        batch = next(loader.iterator())
+        tensor = batch["avgpool_512"]
+        target = batch["target"]
+
+        self.assertEqual(tensor.is_cuda, True)
+        self.assertEqual(target.is_cuda, False)
 
 
 if __name__ == '__main__':
