@@ -2,6 +2,7 @@ h5py
 nltk
 numpy
 parse
+pytest
 python-gflags
 scipy
 sklearn
