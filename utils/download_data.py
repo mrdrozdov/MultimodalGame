@@ -53,6 +53,7 @@ import json
 import time
 import random
 import urllib
+import itertools
 import threading
 from tqdm import tqdm
 from parse import *
@@ -115,7 +116,7 @@ class MultiThreadedDownloader(object):
 
             # download url
             if not os.path.exists(_save_path):
-                urllib.urlretrieve(url, _save_path)
+                urllib.request.urlretrieve(url, _save_path)
                 saved = True
                 time.sleep(self.time_wait)
 
@@ -150,7 +151,14 @@ def cmd_urls():
 
     # read urls
     with open(FLAGS.load_imagenet_path) as f:
-        for ii, line in enumerate(f):
+        for ii, _ in enumerate(itertools.repeat(None)):
+            try:
+                line = next(f)
+            except StopIteration:
+                break
+            except:
+                print("skipping line {}: can't print url".format(ii))
+
             try:
                 line = line.strip()
                 _synset, _url = line.split('\t')
