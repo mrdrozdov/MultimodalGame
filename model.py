@@ -2,8 +2,10 @@ import os
 import sys
 import json
 import time
-import numpy as np
 import random
+import functools
+
+import numpy as np
 import h5py
 
 import torch
@@ -1023,7 +1025,7 @@ def run():
                     attn_context_dim=FLAGS.attn_context_dim)
 
     flogger.Log("Architecture: {}".format(sender))
-    total_params = sum([reduce(lambda x, y: x * y, p.size(), 1.0)
+    total_params = sum([functools.reduce(lambda x, y: x * y, p.size(), 1.0)
                         for p in sender.parameters()])
     flogger.Log("Total Parameters: {}".format(total_params))
 
@@ -1034,7 +1036,7 @@ def run():
                             inp_dim=0)
 
     flogger.Log("Architecture: {}".format(baseline_sen))
-    total_params = sum([reduce(lambda x, y: x * y, p.size(), 1.0)
+    total_params = sum([functools.reduce(lambda x, y: x * y, p.size(), 1.0)
                         for p in baseline_sen.parameters()])
     flogger.Log("Total Parameters: {}".format(total_params))
 
@@ -1048,7 +1050,7 @@ def run():
                         use_binary=FLAGS.use_binary)
 
     flogger.Log("Architecture: {}".format(receiver))
-    total_params = sum([reduce(lambda x, y: x * y, p.size(), 1.0)
+    total_params = sum([functools.reduce(lambda x, y: x * y, p.size(), 1.0)
                         for p in receiver.parameters()])
     flogger.Log("Total Parameters: {}".format(total_params))
 
@@ -1059,7 +1061,7 @@ def run():
                             inp_dim=FLAGS.rec_hidden)
 
     flogger.Log("Architecture: {}".format(baseline_rec))
-    total_params = sum([reduce(lambda x, y: x * y, p.size(), 1.0)
+    total_params = sum([functools.reduce(lambda x, y: x * y, p.size(), 1.0)
                         for p in baseline_rec.parameters()])
     flogger.Log("Total Parameters: {}".format(total_params))
 

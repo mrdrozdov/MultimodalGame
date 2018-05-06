@@ -1,16 +1,18 @@
-import torch
-from torch.autograd import Variable
-import numpy as np
-import datetime
 import os
 import sys
 import json
-import h5py
 import random
+import string
+import datetime
+import itertools
+
+import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
-import string
-import itertools
+import h5py
+import torch
+from torch.autograd import Variable
+import numpy as np
 
 try:
     from visdom import Visdom
@@ -37,6 +39,11 @@ the "Target" attribute of the data.hdf5. Once the dataset has been loaded, the l
 converted into range(len(classes)), and there will be a mapping from the label_ids to this range.
 
 """
+
+
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
 
 
 def recursively_set_device(inp, gpu):
@@ -323,7 +330,8 @@ def embed(word_dict, emb):
 # Function computing CBOW for each description
 def cbow(descr, word_dict):
     # TODO: Faster summing please!
-    emb_size = len(word_dict.values()[0]["emb"])
+    words = list(word_dict.values())
+    emb_size = len(words[0]["emb"])
     for mammal in descr:
         num_w = 0
         desc_len = len(descr[mammal]["desc"])
@@ -376,13 +384,9 @@ def xavier_normal(tensor, gain=1):
         >>> w = torch.Tensor(3, 5)
         >>> nninit.xavier_normal(w, gain=np.sqrt(2.0))
     """
-    if isinstance(tensor, Variable):
-        xavier_normal(tensor.data, gain=gain)
-        return tensor
-    else:
-        fan_in, fan_out = _calculate_fan_in_and_fan_out(tensor)
-        std = gain * np.sqrt(2.0 / (fan_in + fan_out))
-        return tensor.normal_(0, std)
+    fan_in, fan_out = _calculate_fan_in_and_fan_out(tensor)
+    std = gain * np.sqrt(2.0 / (fan_in + fan_out))
+    return tensor.normal_(0, std)
 
 
 def build_mask(region_str, size):

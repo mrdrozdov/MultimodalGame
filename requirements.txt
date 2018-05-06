@@ -3,5 +3,6 @@ nltk
 numpy
 parse
 python-gflags
+scipy
 sklearn
 tqdm

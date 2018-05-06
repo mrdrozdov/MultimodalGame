@@ -4,7 +4,7 @@ Source code for [Emergent Communication in a Multi-Modal, Multi-Step Referential
 
 ## Dependencies
 
-- Python2.7
+- Python3
 - Pytorch
 
 You should install Pytorch using instructions from [here](http://pytorch.org/). Otherwise, can install dependencies using pip: `pip install -r requirements.txt`
