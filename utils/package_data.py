@@ -52,8 +52,8 @@ import gflags
 FLAGS = gflags.FLAGS
 
 
-def get_model():
-    return eval("models.resnet{}".format(FLAGS.resnet))
+def get_model(resnet='34'):
+    return eval("models.resnet{}".format(resnet))
 
 
 def basic_block(layer, relu=False):
@@ -79,9 +79,11 @@ def basic_block(layer, relu=False):
 
 
 class FeatureModel(nn.Module):
-    def __init__(self):
+    def __init__(self, resnet='34'):
         super(FeatureModel, self).__init__()
-        self.fn = get_model()(pretrained=True)
+        self.fn = get_model(resnet)(pretrained=True)
+
+        self.resnet = resnet
 
         # Turn off inplace
         for p in self.fn.modules():
@@ -103,7 +105,7 @@ class FeatureModel(nn.Module):
             (model.layer3, 'layer3'),
         ]
 
-        if FLAGS.resnet == "34":
+        if self.resnet == "34":
             layers += [
                 (model.layer4[0], 'layer4_0_relu'),
                 (model.layer4[1], 'layer4_1_relu'),

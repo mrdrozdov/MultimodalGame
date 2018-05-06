@@ -10,9 +10,18 @@ import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 import h5py
+
 import torch
+import torch.nn as nn
 from torch.autograd import Variable
+import torchvision.models as models
+import torchvision.datasets as dset
+import torchvision.transforms as transforms
+
 import numpy as np
+
+from utils.package_data import FeatureModel
+from utils.package_data import multi_split
 
 try:
     from visdom import Visdom
@@ -261,6 +270,13 @@ def read_data(input_descr):
     return descr, word_dict, dict_size, label_id_to_idx, idx_to_label
 
 
+def setup_dataloader(FLAGS, path, batch_size, shuffle=True, random_seed=11, map_labels=int):
+    if FLAGS.use_directory:
+        return directory_loader(path, batch_size, random_seed, shuffle, map_labels=map_labels)
+    else:
+        return load_hdf5(path, batch_size, random_seed, shuffle, map_labels=map_labels)
+
+
 def load_hdf5(hdf5_file, batch_size, random_seed, shuffle, truncate_final_batch=False, map_labels=int):
     """
     Reads images into random batches
@@ -305,6 +321,48 @@ def load_hdf5(hdf5_file, batch_size, random_seed, shuffle, truncate_final_batch=
             f["fc"][batch_indices]).float().squeeze()
 
         f.close()
+
+        yield batch
+
+
+def directory_loader(directory, batch_size, random_seed, shuffle, truncate_final_batch=False, map_labels=int):
+    # TODO: Add cuda support.
+    # TODO: Package this functionality into independent methods.
+
+    request = "layer4_2,avgpool_512,fc"
+    request = request.split(',')
+
+    # Model Initialization
+    class Identity(nn.Module):
+        def forward(self, x):
+            return x
+    model = models.resnet34(pretrained=True)
+    model.fc = Identity()
+    model.eval()
+
+    # Load dataset and transform
+    dataset = dset.ImageFolder(root=directory,
+                               transform=transforms.Compose([
+                               transforms.Resize(256),
+                               transforms.CenterCrop(224),
+                               transforms.ToTensor(),
+                               transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                               ])
+                              )
+
+    # Read images
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, drop_last=not truncate_final_batch)
+
+    for i, imgs in enumerate(dataloader):
+        tensor, target = imgs
+
+        batch = {}
+
+        batch['target'] = torch.LongTensor(list(map(map_labels, target.tolist())))
+        batch['example_ids'] = None
+        batch['layer4_2'] = None
+        batch['fc'] = None
+        batch['avgpool_512'] = model(tensor).detach()
 
         yield batch
 

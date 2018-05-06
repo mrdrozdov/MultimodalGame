@@ -25,7 +25,7 @@ from misc import recursively_set_device, torch_save, torch_load
 from misc import VisdomLogger as Logger
 from misc import FileLogger
 from misc import read_log_load
-from misc import load_hdf5
+from misc import setup_dataloader
 from misc import read_data
 from misc import embed
 from misc import cbow
@@ -182,7 +182,7 @@ class Sender(nn.Module):
                 attn_scores = attn_scores / n_feats
             else:
                 attn_scores = F.softmax(
-                    attn_scores_flat.view(batch_size, n_feats))
+                    attn_scores_flat.view(batch_size, n_feats), dim=1)
 
             # x = \sum_i a_i x_i
             x_attn = torch.bmm(attn_scores.unsqueeze(1), x).squeeze()
@@ -376,7 +376,7 @@ class Receiver(nn.Module):
                 end = cumlen + ndesc
                 cumlen = end
 
-                scores = F.softmax(d_attn[:, start:end])  # B x NW_i
+                scores = F.softmax(d_attn[:, start:end], dim=1)  # B x NW_i
                 d_attn_scores.append(scores)
             self.d_attn_scores = d_attn_scores = torch.cat(
                 d_attn_scores, 1)  # B x NW
@@ -422,7 +422,7 @@ class Receiver(nn.Module):
                 (np.random.rand(*prob_.shape) < prob_).astype('float32')))
         else:
             # Infer decisions
-            if not self.s_prob_prod or not FLAGS.s_prob_prod:
+            if self.s_prob_prod is None or not FLAGS.s_prob_prod:
                 self.s_prob_prod = s_prob
             else:
                 self.s_prob_prod = self.s_prob_prod * s_prob
@@ -440,7 +440,7 @@ class Receiver(nn.Module):
         # size of wd_inp = batch_size x self.desc_dim
         n_desc = y.size(1)
         # Reweight descriptions based on current model confidence
-        y_scores = F.softmax(y).detach()
+        y_scores = F.softmax(y, dim=1).detach()
         y_broadcast = y_scores.unsqueeze(2).expand(
             batch_size, n_desc, self.desc_dim)
         if FLAGS.desc_attn:
@@ -656,7 +656,7 @@ def eval_dev(dev_file, batch_size, epoch, shuffle, cuda, top_k,
         outp, _ = get_rec_outp(y, y_masks)
 
         # Obtain top k predictions
-        dist = F.log_softmax(outp)
+        dist = F.log_softmax(outp, dim=1)
         top_k_ind = torch.from_numpy(
             dist.data.cpu().numpy().argsort()[:, -top_k:]).long()
         target = target.view(-1, 1).expand(_batch_size, top_k)
@@ -837,7 +837,7 @@ def exchange(sender, receiver, baseline_sen, baseline_rec, exchange_args):
             baseline_sen_scores = baseline_sen(
                 Variable(sen_h_x.data), Variable(z_r.data), None)
 
-            rec_h_z = receiver.h_z if receiver.h_z else receiver.initial_state(
+            rec_h_z = receiver.h_z if receiver.h_z is not None else receiver.initial_state(
                 batch_size)
 
             # Score from Baseline (Receiver)
@@ -847,7 +847,7 @@ def exchange(sender, receiver, baseline_sen, baseline_rec, exchange_args):
         outp = outp.view(batch_size, -1)
 
         # Obtain predictions
-        dist = F.log_softmax(outp)
+        dist = F.log_softmax(outp, dim=1)
         maxdist, argmax = dist.data.max(1)
 
         # Save for later
@@ -865,7 +865,7 @@ def exchange(sender, receiver, baseline_sen, baseline_rec, exchange_args):
             bs.append(baseline_sen_scores)
 
         # Terminate exchange if everyone is done conversing
-        if break_early and stop_mask[-1].float().sum().data[0] == 0:
+        if break_early and stop_mask[-1].float().sum().item() == 0:
             break
 
     # The final mask must always be zero.
@@ -880,12 +880,12 @@ def exchange(sender, receiver, baseline_sen, baseline_rec, exchange_args):
 
 def get_rec_outp(y, masks):
     def negent(yy):
-        probs = F.softmax(yy)
+        probs = F.softmax(yy, dim=1)
         return (torch.log(probs + 1e-8) * probs).sum(1).mean()
 
     # TODO: This is wrong for the dynamic exchange, and we might want a "per example"
     # entropy for either exchange (this version is mean across batch).
-    negentropy = map(negent, y)
+    negentropy = list(map(negent, y))
 
     if masks is not None:
 
@@ -899,7 +899,7 @@ def get_rec_outp(y, masks):
 
         if FLAGS.debug:
             # Each mask index should have exactly 1 true value.
-            assert all([mm.data[0] == 1 for mm in torch.cat(masks, 1).sum(1)])
+            assert all([mm.item() == 1 for mm in torch.cat(masks, 1).sum(1)])
 
         return outp, negentropy
     else:
@@ -914,7 +914,7 @@ def calculate_loss_binary(binary_features, binary_probs, logs, baseline_scores, 
     weight = Variable(logs.data) - \
         Variable(baseline_scores.clone().detach().data)
     if logs.size(0) > 1:
-        weight = weight / np.maximum(1., torch.std(weight.data))
+        weight = weight / max(1., torch.std(weight).item())
     loss = torch.mean(-1 * weight * log_p_z)
 
     # Must do both sides of negent, otherwise is skewed towards 0.
@@ -946,7 +946,7 @@ def multistep_loss_binary(binary_features, binary_probs, logs, baseline_scores, 
             scores = scores[mask.expand_as(scores)].view(-1, scores_size[1])
             return calculate_loss_binary(feat, prob, _logs, scores, entropy_penalty)
 
-        _mask_sums = [m.float().sum().data[0] for m in masks]
+        _mask_sums = [m.float().sum().item() for m in masks]
 
         if FLAGS.debug:
             assert len(masks) > 0
@@ -1207,8 +1207,8 @@ def run():
                                                      batch_size=FLAGS.batch_size,
                                                      shuffle=True)
         elif FLAGS.images == "mammal":
-            dataloader = load_hdf5(FLAGS.train_file, FLAGS.batch_size,
-                                   epoch, FLAGS.shuffle_train, map_labels=map_labels_train)
+            dataloader = setup_dataloader(FLAGS, FLAGS.train_file, FLAGS.batch_size,
+                shuffle=FLAGS.shuffle_train, random_seed=epoch, map_labels=map_labels_train)
         else:
             raise NotImplementedError
 
@@ -1266,7 +1266,7 @@ def run():
             outp, ent_y_rec = get_rec_outp(y, y_masks)
 
             # Obtain predictions
-            dist = F.log_softmax(outp)
+            dist = F.log_softmax(outp, dim=1)
             maxdist, argmax = dist.data.max(1)
 
             # Receiver classification loss
@@ -1353,29 +1353,29 @@ def run():
 
                 # Sender
                 log_loss_sen = "Epoch: {} Step: {} Batch: {} Loss Sender: {}".format(
-                    epoch, step, i_batch, loss_sen.data[0])
+                    epoch, step, i_batch, loss_sen.item())
                 flogger.Log(log_loss_sen)
 
                 # Receiver
                 log_loss_rec_y = "Epoch: {} Step: {} Batch: {} Loss Receiver (Y): {}".format(
-                    epoch, step, i_batch, nll_loss.data[0])
+                    epoch, step, i_batch, nll_loss.item())
                 flogger.Log(log_loss_rec_y)
                 if FLAGS.use_binary:
                     log_loss_rec_z = "Epoch: {} Step: {} Batch: {} Loss Receiver (Z): {}".format(
-                        epoch, step, i_batch, loss_binary_rec.data[0])
+                        epoch, step, i_batch, loss_binary_rec.item())
                     flogger.Log(log_loss_rec_z)
                     if not FLAGS.fixed_exchange:
                         log_loss_rec_s = "Epoch: {} Step: {} Batch: {} Loss Receiver (S): {}".format(
-                            epoch, step, i_batch, loss_binary_s.data[0])
+                            epoch, step, i_batch, loss_binary_s.item())
                         flogger.Log(log_loss_rec_s)
 
                 # Baslines
                 if FLAGS.use_binary:
                     log_loss_bas_s = "Epoch: {} Step: {} Batch: {} Loss Baseline (S): {}".format(
-                        epoch, step, i_batch, loss_bas_sen.data[0])
+                        epoch, step, i_batch, loss_bas_sen.item())
                     flogger.Log(log_loss_bas_s)
                     log_loss_bas_r = "Epoch: {} Step: {} Batch: {} Loss Baseline (R): {}".format(
-                        epoch, step, i_batch, loss_bas_rec.data[0])
+                        epoch, step, i_batch, loss_bas_rec.item())
                     flogger.Log(log_loss_bas_r)
 
                 # Log predictions
@@ -1389,7 +1389,7 @@ def run():
                         log_ent_sen_bin = "Entropy Sender Binary"
                         for i, ent in enumerate(ent_binary_sen):
                             log_ent_sen_bin += "\n{}. {}".format(
-                                i, -ent.data[0])
+                                i, -ent.item())
                         log_ent_sen_bin += "\n"
                         flogger.Log(log_ent_sen_bin)
 
@@ -1397,14 +1397,14 @@ def run():
                         log_ent_rec_bin = "Entropy Receiver Binary"
                         for i, ent in enumerate(ent_binary_rec):
                             log_ent_rec_bin += "\n{}. {}".format(
-                                i, -ent.data[0])
+                                i, -ent.item())
                         log_ent_rec_bin += "\n"
                         flogger.Log(log_ent_rec_bin)
 
                 if len(ent_y_rec) > 0:
                     log_ent_rec_y = "Entropy Receiver Predictions"
                     for i, ent in enumerate(ent_y_rec):
-                        log_ent_rec_y += "\n{}. {}".format(i, -ent.data[0])
+                        log_ent_rec_y += "\n{}. {}".format(i, -ent.item())
                     log_ent_rec_y += "\n"
                     flogger.Log(log_ent_rec_y)
 
@@ -1422,15 +1422,15 @@ def run():
                             sen_probs_i = sen_probs[i_exchange][i_sample].data.tolist(
                             )
                             sen_spark = sparks(
-                                [1] + sen_probs_i)[1:].encode('utf-8')
+                                [1] + sen_probs_i)[1:]
                             rec_probs_i = rec_probs[i_exchange][i_sample].data.tolist(
                             )
                             rec_spark = sparks(
-                                [1] + rec_probs_i)[1:].encode('utf-8')
+                                [1] + rec_probs_i)[1:]
                             s_probs_i = s_probs[i_exchange][i_sample].data.tolist(
                             )
                             s_spark = sparks(
-                                [1] + s_probs_i)[1:].encode('utf-8')
+                                [1] + s_probs_i)[1:]
 
                             sen_binary = sen_feats[i_exchange][i_sample].data.cpu(
                             )
@@ -1479,15 +1479,15 @@ def run():
                             sen_probs_i = sen_probs[i_exchange][i_sample].data.tolist(
                             )
                             sen_spark = sparks(
-                                [1] + sen_probs_i)[1:].encode('utf-8')
+                                [1] + sen_probs_i)[1:]
                             rec_probs_i = rec_probs[i_exchange][i_sample].data.tolist(
                             )
                             rec_spark = sparks(
-                                [1] + rec_probs_i)[1:].encode('utf-8')
+                                [1] + rec_probs_i)[1:]
                             s_probs_i = s_probs[i_exchange][i_sample].data.tolist(
                             )
                             s_spark = sparks(
-                                [1] + s_probs_i)[1:].encode('utf-8')
+                                [1] + s_probs_i)[1:]
 
                             sen_binary = sen_feats[i_exchange][i_sample].data.cpu(
                             )
@@ -1683,6 +1683,7 @@ def flags():
         "glove_path", "./glove.6B/glove.6B.100d.txt", "")
     gflags.DEFINE_boolean("shuffle_train", True, "")
     gflags.DEFINE_boolean("shuffle_dev", False, "")
+    gflags.DEFINE_boolean("use_directory", False, "")
 
     # Model settings
     gflags.DEFINE_enum("model_type", None, [
