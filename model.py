@@ -1478,7 +1478,7 @@ def run():
                             log_train += "\n    {:>3} S: {} {:4}".format(
                                 i_exchange, sen_msg, sen_hamming)
                             log_train += "    s={} R: {} {:4}".format(
-                                s_masks[1:][i_exchange][i_sample].data[0], rec_msg, rec_hamming)
+                                s_masks[1:][i_exchange][i_sample].item(), rec_msg, rec_hamming)
                     log_train += "\n"
                     flogger.Log(log_train)
 
@@ -1535,30 +1535,30 @@ def run():
                             log_eval += "\n    {:>3} S: {} {:4}".format(
                                 i_exchange, sen_msg, sen_hamming)
                             log_eval += "    s={} R: {} {:4}".format(
-                                s_masks[1:][i_exchange][i_sample].data[0], rec_msg, rec_hamming)
+                                s_masks[1:][i_exchange][i_sample].item(), rec_msg, rec_hamming)
                     log_eval += "\n"
                     flogger.Log(log_eval)
 
                 # Sender
                 logger.log(key="Loss Sender",
-                           val=loss_sen.data[0], step=step)
+                           val=loss_sen.item(), step=step)
 
                 # Receiver
                 logger.log(key="Loss Receiver (Y)",
-                           val=nll_loss.data[0], step=step)
+                           val=nll_loss.item(), step=step)
                 if FLAGS.use_binary:
                     logger.log(key="Loss Receiver (Z)",
-                               val=loss_binary_rec.data[0], step=step)
+                               val=loss_binary_rec.item(), step=step)
                     if not FLAGS.fixed_exchange:
                         logger.log(key="Loss Receiver (S)",
-                                   val=loss_binary_s.data[0], step=step)
+                                   val=loss_binary_s.item(), step=step)
 
                 # Baselines
                 if FLAGS.use_binary:
                     logger.log(key="Loss Baseline (S)",
-                               val=loss_bas_sen.data[0], step=step)
+                               val=loss_bas_sen.item(), step=step)
                     logger.log(key="Loss Baseline (R)",
-                               val=loss_bas_rec.data[0], step=step)
+                               val=loss_bas_rec.item(), step=step)
 
                 logger.log(key="Training Accuracy",
                            val=avg_batch_acc, step=step)
