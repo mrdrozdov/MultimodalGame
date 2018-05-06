@@ -94,6 +94,8 @@ class DirectoryLoader(object):
         self.dataloader = dataloader
 
     def iterator(self):
+        # TODO: Add random seed.
+
         model = self.model
         dataset = self.dataset
         dataloader = self.dataloader

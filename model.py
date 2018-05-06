@@ -32,6 +32,8 @@ from misc import cbow
 from misc import xavier_normal
 from misc import build_mask
 
+from data import DirectoryLoaderConfig, DataLoader
+
 from sparks import sparks
 
 from binary_vectors import extract_binary
@@ -608,8 +610,20 @@ def eval_dev(dev_file, batch_size, epoch, shuffle, cuda, top_k,
     correct = 0
 
     # Load development images
-    dev_loader = load_hdf5(dev_file, batch_size, epoch, shuffle,
-                           truncate_final_batch=True, map_labels=map_labels)
+    if not FLAGS.use_directory:
+        raise NotImplementedError
+        # dev_loader = load_hdf5(dev_file, batch_size, epoch, shuffle,
+        #                        truncate_final_batch=True, map_labels=map_labels)
+    else:
+        source = "directory"
+        path = dev_file
+        loader_config = DirectoryLoaderConfig.build_with("resnet18")
+        loader_config.map_labels = map_labels
+        loader_config.batch_size = batch_size
+        loader_config.shuffle = shuffle
+        loader_config.truncate_final_batch = True
+
+        dev_loader = DataLoader.build_with(path, source, loader_config).iterator()
 
     for batch in dev_loader:
         # Extract images and targets
@@ -1207,8 +1221,14 @@ def run():
                                                      batch_size=FLAGS.batch_size,
                                                      shuffle=True)
         elif FLAGS.images == "mammal":
-            dataloader = setup_dataloader(FLAGS, FLAGS.train_file, FLAGS.batch_size,
-                shuffle=FLAGS.shuffle_train, random_seed=epoch, map_labels=map_labels_train)
+            source = "directory"
+            path = FLAGS.train_file
+            loader_config = DirectoryLoaderConfig.build_with("resnet18")
+            loader_config.map_labels = map_labels_train
+            loader_config.batch_size = FLAGS.batch_size
+            loader_config.shuffle = FLAGS.shuffle_train
+
+            dataloader = DataLoader.build_with(path, source, loader_config).iterator()
         else:
             raise NotImplementedError
 
