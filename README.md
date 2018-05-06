@@ -69,3 +69,8 @@ EXPERIMENT_NAME="demo"; \
 ```
 
 We've included a notebook with a couple examples for how you might want to analyse the binary messages [here](https://github.com/nyu-dl/MultimodalGame/blob/master/analyse_communication.ipynb).
+
+## FAQ
+
+Q: Trouble with string encoding and IO? Try `export PYTHONIOENCODING=utf8` or set `encoding="utf8"` in any calls that open files.
+

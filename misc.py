@@ -193,7 +193,7 @@ class FileLogger(object):
             sys.stderr.write("[%i] %s\n" % (level, message))
         if self.log_path and level >= self.min_file_level:
             # Write to the log file then close it
-            with open(self.log_path, 'a') as f:
+            with open(self.log_path, 'a', encoding="utf8") as f:
                 datetime_string = datetime.datetime.now().strftime(
                     "%y-%m-%d %H:%M:%S")
                 f.write("%s [%i] %s\n" % (datetime_string, level, message))
@@ -371,7 +371,7 @@ def directory_loader(directory, batch_size, random_seed, shuffle, truncate_final
 def embed(word_dict, emb):
     glove = {}
     print("Vocab Size: {}".format(len(word_dict.keys())))
-    with open(emb, "r") as f:
+    with open(emb, "r", encoding="utf8") as f:
         for line in f:
             word = line.strip()
             word = word.split(" ")
