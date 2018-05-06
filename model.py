@@ -622,6 +622,7 @@ def eval_dev(dev_file, batch_size, epoch, shuffle, cuda, top_k,
         loader_config.batch_size = batch_size
         loader_config.shuffle = shuffle
         loader_config.truncate_final_batch = True
+        loader_config.cuda = FLAGS.cuda
 
         dev_loader = DataLoader.build_with(path, source, loader_config).iterator()
 
@@ -1227,6 +1228,7 @@ def run():
             loader_config.map_labels = map_labels_train
             loader_config.batch_size = FLAGS.batch_size
             loader_config.shuffle = FLAGS.shuffle_train
+            loader_config.cuda = FLAGS.cuda
 
             dataloader = DataLoader.build_with(path, source, loader_config).iterator()
         else:
