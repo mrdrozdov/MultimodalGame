@@ -131,6 +131,46 @@ class TestDirectoryLoader(unittest.TestCase):
         self.assertEqual(index, 0)
         self.assertTrue(tensor.eq(1).all())
 
+    def test_cache_has_one(self):
+        config = DirectoryLoaderConfig.build_with("resnet18")
+        config.batch_size = 2
+        loader = DataLoader.build_with(self.path, self.source, config)
+
+        # Fill cache
+        loader.cache[0] = 1
+        loader.cache_keys.add(0)
+
+        batch = next(loader.iterator())
+        tensor = batch["avgpool_512"]
+        index = batch["example_ids"]
+
+        self.assertEqual(len(index), 2)
+        self.assertEqual(index[0], 0)
+        self.assertEqual(index[1], 1)
+        self.assertTrue(tensor[0].eq(1).all())
+        self.assertFalse(tensor[1].eq(0).all())
+        self.assertEqual(len(loader.cache_keys), 2)
+
+    def test_cache_full(self):
+        config = DirectoryLoaderConfig.build_with("resnet18")
+        loader = DataLoader.build_with(self.path, self.source, config)
+
+        for i, batch in enumerate(loader.iterator()):
+            pass
+
+        self.assertEqual(len(loader.cache_keys), 3)
+
+        # Fill cache
+        loader.cache[0] = 1
+
+        batch = next(loader.iterator())
+        tensor = batch["avgpool_512"]
+        index = batch["example_ids"][0]
+
+        self.assertEqual(index, 0)
+        self.assertTrue(tensor.eq(1).all())
+        self.assertEqual(len(loader.cache_keys), 3)
+
     @unittest.skipIf(not torch.cuda.is_available(), "skipping cuda test")
     def test_cuda(self):
         config = DirectoryLoaderConfig.build_with("resnet18")

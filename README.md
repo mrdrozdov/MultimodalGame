@@ -74,3 +74,5 @@ We've included a notebook with a couple examples for how you might want to analy
 
 Q: Trouble with string encoding and IO? Try `export PYTHONIOENCODING=utf8` or set `encoding="utf8"` in any calls that open files.
 
+Q: What to do when getting a ModuleNotFoundError? Try `export PYTHONPATH=.` or the path to your project directory.
+

@@ -150,7 +150,7 @@ class DirectoryLoader(DataLoader):
         if self.config.cuda:
             output = output.cuda()
         if len(newids) > 0:
-            output[newids] = model(tensor).detach()
+            output[newids] = model(tensor[newids]).detach()
         if len(oldids) > 0:
             output[oldids] = self.cache[oldkeys]
 
