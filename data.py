@@ -1,8 +1,8 @@
-import os
+# import os
 
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
+# from torch.autograd import Variable
 import torchvision.models as models
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
@@ -25,18 +25,18 @@ class LoaderConfig(object):
 class DirectoryLoaderConfig(LoaderConfig):
 
     @staticmethod
-    def build_with(arch):
+    def build_with(arch, pretrained=True):
 
         class Identity(nn.Module):
             def forward(self, x):
                 return x
 
         if arch == "resnet18":
-            model = models.resnet18(pretrained=True)
+            model = models.resnet18(pretrained=pretrained)
             model.fc = Identity()
             model.eval()
         elif arch == "resnet34":
-            model = models.resnet34(pretrained=True)
+            model = models.resnet34(pretrained=pretrained)
             model.fc = Identity()
             model.eval()
         else:
@@ -69,7 +69,7 @@ class DataLoader(object):
         raise NotImplementedError
 
 
-class DirectoryLoader(object):
+class DirectoryLoader(DataLoader):
     def __init__(self, path, config):
         super(DirectoryLoader, self).__init__()
         self.path = path
@@ -101,7 +101,6 @@ class DirectoryLoader(object):
         # TODO: Add random seed.
 
         model = self.model
-        dataset = self.dataset
         dataloader = self.dataloader
 
         map_labels = self.map_labels

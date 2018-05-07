@@ -1,10 +1,10 @@
+import os
 import unittest
-
 from collections import Counter
 
 import torch
 
-from data import *
+from data import DirectoryLoaderConfig, DataLoader, DirectoryLoader
 
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
