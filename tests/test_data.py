@@ -149,6 +149,7 @@ class TestDirectoryLoader(unittest.TestCase):
         self.assertEqual(index[1], 1)
         self.assertTrue(tensor[0].eq(1).all())
         self.assertFalse(tensor[1].eq(0).all())
+        self.assertFalse(loader.cache[1].eq(0).all())
         self.assertEqual(len(loader.cache_keys), 2)
 
     def test_cache_full(self):

@@ -43,6 +43,14 @@ import gflags
 FLAGS = gflags.FLAGS
 
 
+def check_nan(x, breakpoint=False):
+    if (x != x).any():
+        if breakpoint:
+            import ipdb; ipdb.set_trace()
+        raise RuntimeError("There is an nan detected.")
+    return x
+
+
 def Variable(*args, **kwargs):
     var = _Variable(*args, **kwargs)
     if FLAGS.cuda:

@@ -141,8 +141,8 @@ class DirectoryLoader(DataLoader):
         # Check cache
         newids = [ii for ii, key in enumerate(example_ids) if key not in self.cache_keys]
         newkeys = [key for ii, key in enumerate(example_ids) if key not in self.cache_keys]
-        oldids = [ii for ii, key in enumerate(example_ids) if ii in self.cache_keys]
-        oldkeys = [key for ii, key in enumerate(example_ids) if ii in self.cache_keys]
+        oldids = [ii for ii, key in enumerate(example_ids) if key in self.cache_keys]
+        oldkeys = [key for ii, key in enumerate(example_ids) if key in self.cache_keys]
 
         # Get output
         output = torch.FloatTensor(tensor.size(0), self.nfeatures)
@@ -152,10 +152,18 @@ class DirectoryLoader(DataLoader):
         if len(newids) > 0:
             output[newids] = model(tensor[newids]).detach()
         if len(oldids) > 0:
-            output[oldids] = self.cache[oldkeys]
+            toload = self.cache[oldkeys]
+            if self.config.cuda:
+                toload = toload.cuda()
+            output[oldids] = toload
 
         # Update cache
-        self.cache_keys.update(newkeys)
+        if len(newids) > 0:
+            tocache = output[newids]
+            if self.config.cuda:
+                tocache = tocache.cpu()
+            self.cache[newkeys] = tocache
+            self.cache_keys.update(newkeys)
 
         return output
 
