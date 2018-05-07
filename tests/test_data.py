@@ -81,6 +81,41 @@ class TestDirectoryLoader(unittest.TestCase):
 
         self.assertFalse(tensor.requires_grad)
 
+    def test_sequential(self):
+        config = DirectoryLoaderConfig.build_with("resnet18")
+        loader = DataLoader.build_with(self.path, self.source, config)
+
+        perm = [0, 1, 2]
+        for i, batch in enumerate(loader.iterator()):
+            example_id = batch["example_ids"][0]
+            self.assertEqual(perm[i], example_id)
+        for i, batch in enumerate(loader.iterator()):
+            example_id = batch["example_ids"][0]
+            self.assertEqual(perm[i], example_id)
+
+    def test_shuffle(self):
+        config = DirectoryLoaderConfig.build_with("resnet18")
+        config.shuffle = True
+        loader = DataLoader.build_with(self.path, self.source, config)
+
+        randperm0 = None
+        for i, batch in enumerate(loader.iterator()):
+            if randperm0 is None:
+                randperm0 = loader.sampler.randperm
+            example_id = batch["example_ids"][0]
+            self.assertEqual(randperm0[i], example_id)
+
+        randperm1 = None
+        for i, batch in enumerate(loader.iterator()):
+            if randperm1 is None:
+                randperm1 = loader.sampler.randperm
+            example_id = batch["example_ids"][0]
+            self.assertEqual(randperm1[i], example_id)
+
+        # 1/6 chance of these being equal with dataset size = 3
+        # If necessary, then fix the seed.
+        self.assertEqual(all(i0 == i1 for i0, i1 in zip(randperm0, randperm1)), False)
+
     @unittest.skipIf(not torch.cuda.is_available(), "skipping cuda test")
     def test_cuda(self):
         config = DirectoryLoaderConfig.build_with("resnet18")

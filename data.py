@@ -7,9 +7,29 @@ import torchvision.models as models
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
 
+from torch.utils.data.sampler import Sampler
+
 
 def map_to_int(label):
     return int(label)
+
+
+class RandomSampler(Sampler):
+    r"""Samples elements randomly, without replacement.
+    Arguments:
+        data_source (Dataset): dataset to sample from
+    """
+
+    def __init__(self, data_source):
+        self.data_source = data_source
+        self.randperm = None
+
+    def __iter__(self):
+        self.randperm = randperm = torch.randperm(len(self.data_source)).tolist()
+        return iter(randperm)
+
+    def __len__(self):
+        return len(self.data_source)
 
 
 class LoaderConfig(object):
@@ -85,8 +105,13 @@ class DirectoryLoader(DataLoader):
                                    ])
                                   )
 
+        # Init Sampler
+        self.sampler = sampler = RandomSampler(dataset) if config.shuffle else None
+
         # Read images
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=config.batch_size, shuffle=config.shuffle, drop_last=not config.truncate_final_batch)
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=config.batch_size,
+            sampler=sampler,
+            drop_last=not config.truncate_final_batch)
 
         self.map_labels = config.map_labels
 
@@ -97,6 +122,14 @@ class DirectoryLoader(DataLoader):
         if config.cuda:
             self.model.cuda()
 
+    def get_batch_indices(self, i, batch_size):
+        if self.config.shuffle:
+            randperm = self.sampler.randperm
+            indices = [randperm[ii] for ii in range(i, i+batch_size)]
+        else:
+            indices = [ii for ii in range(i, i+batch_size)]
+        return indices
+
     def iterator(self):
         # TODO: Add random seed.
 
@@ -105,7 +138,9 @@ class DirectoryLoader(DataLoader):
 
         map_labels = self.map_labels
 
-        for i, imgs in enumerate(dataloader):
+        it = iter(dataloader)
+
+        for i, imgs in enumerate(it):
             tensor, target = imgs
 
             if self.config.cuda:
@@ -114,7 +149,7 @@ class DirectoryLoader(DataLoader):
             batch = {}
 
             batch['target'] = torch.LongTensor(list(map(map_labels, target.tolist())))
-            batch['example_ids'] = None
+            batch['example_ids'] = self.get_batch_indices(i, target.size(0))
             batch['layer4_2'] = None
             batch['fc'] = None
             batch['avgpool_512'] = model(tensor).detach()
