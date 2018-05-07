@@ -116,6 +116,21 @@ class TestDirectoryLoader(unittest.TestCase):
         # If necessary, then fix the seed.
         self.assertEqual(all(i0 == i1 for i0, i1 in zip(randperm0, randperm1)), False)
 
+    def test_cache_hit(self):
+        config = DirectoryLoaderConfig.build_with("resnet18")
+        loader = DataLoader.build_with(self.path, self.source, config)
+
+        # Fill cache
+        loader.cache[0] = 1
+        loader.cache_keys.add(0)
+
+        batch = next(loader.iterator())
+        tensor = batch["avgpool_512"]
+        index = batch["example_ids"][0]
+
+        self.assertEqual(index, 0)
+        self.assertTrue(tensor.eq(1).all())
+
     @unittest.skipIf(not torch.cuda.is_available(), "skipping cuda test")
     def test_cuda(self):
         config = DirectoryLoaderConfig.build_with("resnet18")

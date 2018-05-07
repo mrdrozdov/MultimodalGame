@@ -119,6 +119,11 @@ class DirectoryLoader(DataLoader):
         self.dataset = dataset
         self.dataloader = dataloader
 
+        self.nfeatures = 512
+        self.ndata = len(dataset)
+        self.cache = torch.FloatTensor(self.ndata, self.nfeatures).fill_(0)
+        self.cache_keys = set()
+
         if config.cuda:
             self.model.cuda()
 
@@ -130,10 +135,33 @@ class DirectoryLoader(DataLoader):
             indices = [ii for ii in range(i, i+batch_size)]
         return indices
 
+    def get_cached_output(self, tensor, example_ids):
+        model = self.model
+
+        # Check cache
+        newids = [ii for ii, key in enumerate(example_ids) if key not in self.cache_keys]
+        newkeys = [key for ii, key in enumerate(example_ids) if key not in self.cache_keys]
+        oldids = [ii for ii, key in enumerate(example_ids) if ii in self.cache_keys]
+        oldkeys = [key for ii, key in enumerate(example_ids) if ii in self.cache_keys]
+
+        # Get output
+        output = torch.FloatTensor(tensor.size(0), self.nfeatures)
+
+        if self.config.cuda:
+            output = output.cuda()
+        if len(newids) > 0:
+            output[newids] = model(tensor).detach()
+        if len(oldids) > 0:
+            output[oldids] = self.cache[oldkeys]
+
+        # Update cache
+        self.cache_keys.update(newkeys)
+
+        return output
+
     def iterator(self):
         # TODO: Add random seed.
 
-        model = self.model
         dataloader = self.dataloader
 
         map_labels = self.map_labels
@@ -149,10 +177,10 @@ class DirectoryLoader(DataLoader):
             batch = {}
 
             batch['target'] = torch.LongTensor(list(map(map_labels, target.tolist())))
-            batch['example_ids'] = self.get_batch_indices(i, target.size(0))
+            batch['example_ids'] = example_ids = self.get_batch_indices(i, target.size(0))
             batch['layer4_2'] = None
             batch['fc'] = None
-            batch['avgpool_512'] = model(tensor).detach()
+            batch['avgpool_512'] = self.get_cached_output(tensor, example_ids)
 
             yield batch
 
