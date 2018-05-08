@@ -9,6 +9,21 @@ Source code for [Emergent Communication in a Multi-Modal, Multi-Step Referential
 
 You should install Pytorch using instructions from [here](http://pytorch.org/). Otherwise, can install dependencies using pip: `pip install -r requirements.txt`
 
+## TODO
+
+Will be keeping track of some basic tasks here during the development stage:
+
+- [ ] Add optimizers.
+- [ ] Double check cuda support.
+- [ ] Script for basic timing of batch/epoch.
+- [ ] Gather a "baseline" timing and results from the previous codebase.
+- [ ] See whether we can match previous results with the new changes.
+
+Research Ideas:
+
+- Add a competing agent.
+- Can we extract image attributes in an unsupervised way using this setup? If Angeliki's idea works, then maybe yes!
+
 ## Building the Datasets
 
 This model requires an hdf5 file containing image features and csv file containing class descriptions. To build such a dataset using images from Imagenet, you can simply run the following script:
