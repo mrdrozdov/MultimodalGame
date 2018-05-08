@@ -59,7 +59,7 @@ class TestReceiver(unittest.TestCase):
         msg = torch.FloatTensor(batch_size, self.config.message_in).normal_()
         state = torch.FloatTensor(batch_size, self.config.receiver_hidden_dim).fill_(0)
         descriptors = torch.FloatTensor(self.config.nclasses, self.config.descriptor_dim).normal_()
-        (stop_bit, stop_dist), (message, message_dist), y = receiver(msg, state, None, descriptors)
+        (stop_bit, stop_dist), (message, message_dist), y, _ = receiver(msg, state, None, descriptors)
 
         check_bernoulli_dist(self, stop_dist)
         check_bernoulli_out(self, stop_bit)
@@ -75,7 +75,7 @@ class TestReceiver(unittest.TestCase):
         msg = torch.FloatTensor(batch_size, self.config.message_in).normal_()
         state = torch.FloatTensor(batch_size, self.config.receiver_hidden_dim).fill_(0)
         descriptors = torch.FloatTensor(self.config.nclasses, self.config.descriptor_dim).normal_()
-        (stop_bit, stop_dist), (message, message_dist), y = receiver(msg, state, None, descriptors)
+        (stop_bit, stop_dist), (message, message_dist), y, _ = receiver(msg, state, None, descriptors)
 
         check_bernoulli_dist(self, stop_dist)
         check_bernoulli_out(self, stop_bit)

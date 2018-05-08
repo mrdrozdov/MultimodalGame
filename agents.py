@@ -118,10 +118,12 @@ class Receiver(Agent):
         return reweighted
 
     def forward(self, message, state, image, class_descriptors):
-        batch_size, state_size = state.size()
+        batch_size = message.size(0)
         ndescriptors, descriptor_size = class_descriptors.size()
 
         # Encode history.
+        if state is None:
+            state = torch.zeros(batch_size, self.config.receiver_hidden_dim)
         new_state = self.rnn(message, state)
 
         # Predict stop bit.
@@ -162,4 +164,4 @@ class Receiver(Agent):
         else:
             outp_msg = torch.round(message_dist).detach()
 
-        return (stop_bit, stop_dist), (outp_msg, message_dist), y
+        return (stop_bit, stop_dist), (outp_msg, message_dist), y, new_state
