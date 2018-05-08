@@ -51,6 +51,10 @@ class Trainer(object):
         stop_loss, _ = self.exchange.multistep_exchange_loss(stop_bit, stop_dist, prediction_log_prob, baseline_receiver_scores,
             masks, entropy_penalty=self.entropy_penalty)
 
+        # Baseline Loss
+        baseline_loss_sender = self.exchange.multistep_baseline_loss(baseline_sender_scores, prediction_log_prob, masks)
+        baseline_loss_receiver = self.exchange.multistep_baseline_loss(baseline_receiver_scores, prediction_log_prob, masks)
+
         # Cross Entropy Loss
         xent_loss = nn.NLLLoss()(F.log_softmax(y, dim=1), target)
 
@@ -58,6 +62,8 @@ class Trainer(object):
         trainer_loss.sender_message_loss = sender_message_loss
         trainer_loss.receiver_message_loss = receiver_message_loss
         trainer_loss.stop_loss = stop_loss
+        trainer_loss.baseline_loss_sender = baseline_loss_sender
+        trainer_loss.baseline_loss_receiver = baseline_loss_receiver
         trainer_loss.xent_loss = xent_loss
 
         return trainer_loss

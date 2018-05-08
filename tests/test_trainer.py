@@ -37,6 +37,8 @@ class TestTrainer(unittest.TestCase):
         self.assertEqual(trainer_loss.sender_message_loss.numel(), 1)
         self.assertEqual(trainer_loss.receiver_message_loss.numel(), 1)
         self.assertEqual(trainer_loss.stop_loss.numel(), 1)
+        self.assertEqual(trainer_loss.baseline_loss_sender.numel(), 1)
+        self.assertEqual(trainer_loss.baseline_loss_receiver.numel(), 1)
         self.assertEqual(trainer_loss.xent_loss.numel(), 1)
 
 

@@ -123,9 +123,9 @@ class Exchange(object):
 
     def multistep_baseline_loss(self, baseline_scores, prediction_log_prob, masks):
         if masks is not None:
-            loss = multistep_baseline_loss_masked(baseline_scores, prediction_log_prob, masks)
+            loss = self.multistep_baseline_loss_masked(baseline_scores, prediction_log_prob, masks)
         else:
-            loss = multistep_baseline_loss_helper(baseline_scores, prediction_log_prob)
+            loss = self.multistep_baseline_loss_helper(baseline_scores, prediction_log_prob)
         return loss
 
     def single_exchange_loss(self, message, message_dist, prediction_log_prob, baseline_scores):
