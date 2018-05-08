@@ -22,6 +22,8 @@ Will be keeping track of some basic tasks here during the development stage:
 Research Ideas:
 
 - Add a competing agent.
+- Add variable length messages.
+- Analyze the semantic content of messages.
 - Can we extract image attributes in an unsupervised way using this setup? If Angeliki's idea works, then maybe yes!
 
 ## Building the Datasets
