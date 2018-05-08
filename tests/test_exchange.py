@@ -18,7 +18,7 @@ class TestExchange(unittest.TestCase):
         prediction_log_dist = F.log_softmax(torch.FloatTensor(batch_size, self.config.nclasses).normal_(), dim=1)
         target = prediction_log_dist.argmax(dim=1).unsqueeze(1)
         prediction_log_prob = exchange.loglikelihood(prediction_log_dist, target)
-        baseline_scores = prediction_log_dist + prediction_log_dist.clone().normal_()
+        baseline_scores = prediction_log_prob + prediction_log_prob.clone().normal_()
 
         return {
             'message': message,
@@ -93,6 +93,17 @@ class TestExchange(unittest.TestCase):
         self.assertEqual(len(regularization_terms), length)
         for negent in regularization_terms:
             self.assertEqual(negent.numel(), 1)
+
+    def test_single_baseline_loss(self):
+        batch_size = 3
+        message_size = 10
+        exchange = Exchange(None, None, None, None, None, None)
+
+        kwargs = self.exchange_kwargs(exchange, batch_size, message_size)
+        loss = exchange.single_baseline_loss(baseline_scores=kwargs['baseline_scores'],
+            prediction_log_prob=kwargs['prediction_log_prob'])
+
+        self.assertEqual(loss.numel(), 1)
 
 
 if __name__ == '__main__':

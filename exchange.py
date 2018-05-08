@@ -104,6 +104,30 @@ class Exchange(object):
 
         return negative_entropy
 
+    def single_baseline_loss(self, baseline_scores, prediction_log_prob):
+        return nn.MSELoss()(baseline_scores, prediction_log_prob.detach())
+
+    def multistep_baseline_loss_masked(self, baseline_scores, prediction_log_prob, masks):
+        losses = [self.single_baseline_loss(scores[mask].view(-1, 1), prediction_log_prob[mask].view(-1, 1))
+                  for scores, mask
+                  in zip(baseline_scores, masks)]
+        mask_sums = [m.sum().float().item() for m in masks]
+        losses = [l * ms for l, ms in zip(losses, mask_sums)]
+        loss = sum(losses) / sum(mask_sums)
+        return loss
+
+    def multistep_baseline_loss_helper(self, baseline_scores, prediction_log_prob):
+        losses = [self.single_baseline_loss(scores, prediction_log_prob) for scores in baseline_scores]
+        loss = sum(losses) / len(losses)
+        return loss
+
+    def multistep_baseline_loss(self, baseline_scores, prediction_log_prob, masks):
+        if masks is not None:
+            loss = multistep_baseline_loss_masked(baseline_scores, prediction_log_prob, masks)
+        else:
+            loss = multistep_baseline_loss_helper(baseline_scores, prediction_log_prob)
+        return loss
+
     def single_exchange_loss(self, message, message_dist, prediction_log_prob, baseline_scores):
         """Calculate the loss component for a single exchange.
 
