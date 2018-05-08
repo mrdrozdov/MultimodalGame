@@ -5,7 +5,8 @@ import torch
 import torch.nn.functional as F
 
 from agents import AgentConfig, Sender, Receiver
-from exchange import Exchange
+from baseline import Baseline
+from exchange import Exchange, ExchangeModel
 
 
 class TestExchange(unittest.TestCase):
@@ -44,7 +45,10 @@ class TestExchange(unittest.TestCase):
         sender.eval()
         receiver = Receiver(self.config)
         receiver.eval()
-        exchange = Exchange(sender, receiver, descriptors)
+        exchange_model = ExchangeModel(self.config)
+        baseline_sender = Baseline(self.config, 'sender')
+        baseline_receiver = Baseline(self.config, 'receiver')
+        exchange = Exchange(exchange_model, sender, receiver, baseline_sender, baseline_receiver, descriptors)
 
         image = torch.FloatTensor(batch_size, self.config.image_in).normal_()
         results = exchange.exchange(image, length)
@@ -55,7 +59,7 @@ class TestExchange(unittest.TestCase):
         batch_size = 3
         message_size = 10
         message_dist = F.sigmoid(torch.Tensor(batch_size, message_size).normal_())
-        exchange = Exchange(None, None, None)
+        exchange = Exchange(None, None, None, None, None, None)
         negent = exchange.single_entropy_regularization(message_dist)
         
         self.assertEqual(negent.numel(), 1)
@@ -63,7 +67,7 @@ class TestExchange(unittest.TestCase):
     def test_single_exchange_loss(self):
         batch_size = 3
         message_size = 10
-        exchange = Exchange(None, None, None)
+        exchange = Exchange(None, None, None, None, None, None)
 
         loss = exchange.single_exchange_loss(**self.exchange_kwargs(
             exchange, batch_size, message_size))
@@ -75,7 +79,7 @@ class TestExchange(unittest.TestCase):
         message_size = 10
         length = 3
         regularization = False
-        exchange = Exchange(None, None, None)
+        exchange = Exchange(None, None, None, None, None, None)
 
         def exchange_kwargs():
             return self.exchange_kwargs(exchange, batch_size, message_size)

@@ -1,4 +1,6 @@
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 
 TINY = 1e-8
@@ -8,18 +10,45 @@ class ExchangeResult(object):
     pass
 
 
+class ExchangeModel(object):
+    def __init__(self, config):
+        super(ExchangeModel, self).__init__()
+        self.config = config
+        self.message_bias = nn.Parameter(torch.FloatTensor(config.message_size))
+
+    def get_initial_message(self, batch_size):
+        initial_message = F.sigmoid(self.message_bias).view(1, -1)
+        return initial_message.expand(batch_size, self.config.message_size)
+
+    def get_initial_state(self, batch_size):
+        return torch.zeros(batch_size, self.config.receiver_hidden_dim)
+
+
 class Exchange(object):
-    def __init__(self, sender, receiver, descriptors):
+    def __init__(self, exchange_model, sender, receiver, baseline_sender, baseline_receiver, descriptors):
         super(Exchange, self).__init__()
+        self.exchange_model = exchange_model
         self.sender = sender
         self.receiver = receiver
+        self.baseline_sender = baseline_sender
+        self.baseline_receiver = baseline_receiver
         self.descriptors = descriptors
 
     def single_exchange(self, image, message=None, state=None):
+        batch_size = image.size(0)
+
+        if message is None:
+            message = self.exchange_model.get_initial_message(batch_size)
+
+        if state is None:
+            state = self.exchange_model.get_initial_state(batch_size)
+
         sender_message, sender_message_dist = \
             self.sender(message, None, image, None)
         (stop_bit, stop_dist), (receiver_message, receiver_message_dist), y, new_state = \
             self.receiver(sender_message, state, None, self.descriptors)
+        baseline_sender_scores = self.baseline_sender(image, message, None)
+        baseline_receiver_scores = self.baseline_receiver(None, sender_message, state)
 
         result = ExchangeResult()
         result.sender_message = sender_message
@@ -30,6 +59,8 @@ class Exchange(object):
         result.receiver_message_dist = receiver_message_dist
         result.y = y
         result.new_state = new_state
+        result.baseline_sender_scores = baseline_sender_scores
+        result.baseline_receiver_scores = baseline_receiver_scores
 
         return result
 

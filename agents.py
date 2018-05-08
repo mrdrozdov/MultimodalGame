@@ -35,7 +35,6 @@ class Sender(Agent):
         self.config = config
 
         # Network for communication
-        self.message_bias = nn.Parameter(torch.FloatTensor(config.message_out))
         self.message_layer = nn.Linear(config.message_in, config.message_out)
         self.image_layer = nn.Linear(config.image_in, config.image_out)
         self.binary_layer = nn.Linear(config.binary_in, config.binary_out)
@@ -47,10 +46,7 @@ class Sender(Agent):
         h_img = self.image_layer(image)
 
         # Encode message.
-        if message is not None:
-            h_msg = self.message_layer(message)
-        else:
-            h_msg = self.message_bias.view(1, -1).expand(batch_size, self.config.message_out)
+        h_msg = self.message_layer(message)
 
         # Mix information.
         features = self.binary_layer(F.tanh(h_img + h_msg))
@@ -123,8 +119,6 @@ class Receiver(Agent):
         ndescriptors, descriptor_size = class_descriptors.size()
 
         # Encode history.
-        if state is None:
-            state = torch.zeros(batch_size, self.config.receiver_hidden_dim)
         new_state = self.rnn(message, state)
 
         # Predict stop bit.
