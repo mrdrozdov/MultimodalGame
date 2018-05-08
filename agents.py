@@ -25,6 +25,7 @@ class AgentConfig(object):
     binary_out = message_size
     stop_size = 1
     nclasses = 30
+    baseline_dim = 256
 
 
 class Sender(Agent):
