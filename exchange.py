@@ -34,6 +34,15 @@ class Exchange(object):
         self.baseline_receiver = baseline_receiver
         self.descriptors = descriptors
 
+    def parameters(self):
+        params = []
+        params += list(self.exchange_model.parameters())
+        params += list(self.sender.parameters())
+        params += list(self.receiver.parameters())
+        params += list(self.baseline_sender.parameters())
+        params += list(self.baseline_receiver.parameters())
+        return params
+
     def single_exchange(self, image, message=None, state=None):
         batch_size = image.size(0)
 
