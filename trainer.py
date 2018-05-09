@@ -79,8 +79,7 @@ class Trainer(object):
         trainer_loss.baseline_loss_sender = baseline_loss_sender
         trainer_loss.baseline_loss_receiver = baseline_loss_receiver
         trainer_loss.xent_loss = xent_loss
-        trainer_loss.adaptive = adaptive
         trainer_loss.y = y
 
         return trainer_loss
-        
+

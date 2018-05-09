@@ -1,12 +1,19 @@
+import os
+import sys
+import time
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable as _Variable
 import torch.optim as optim
+
+import numpy as np
 
 from misc import read_data
 from misc import embed
 from misc import cbow
+
+from data import DirectoryLoaderConfig, DataLoader
 
 from agents import AgentConfig, Sender, Receiver
 from baseline import Baseline
@@ -60,6 +67,7 @@ def run():
         desc_set_lens=desc_dev_set_lens)
 
     # Initialize Models
+    config = AgentConfig()
     exchange_model = ExchangeModel(config)
     sender = Sender(config)
     receiver = Receiver(config)
@@ -73,11 +81,14 @@ def run():
 
     # Static Variables
     img_feat = "avgpool_512"
+    topk = 5
+
+    accs = []
 
     # Run Epochs
     for epoch in range(FLAGS.max_epoch):
         source = "directory"
-        path = FLAGS.train_file
+        path = FLAGS.train_data
         loader_config = DirectoryLoaderConfig.build_with("resnet18")
         loader_config.map_labels = map_labels_train
         loader_config.batch_size = FLAGS.batch_size
@@ -97,9 +108,19 @@ def run():
             optimizer.zero_grad()
             loss.backward()
             nn.utils.clip_grad_norm(exchange.parameters(), max_norm=1.)
-            optimizer_rec.step()
+            optimizer.step()
 
-            print(loss.item())
+            y = trainer_loss.y
+            topk_indices = y.sort()[1][:, -topk:]
+            target_broadcast = target.view(-1, 1).expand(FLAGS.batch_size, topk)
+            accuracy = (topk_indices == target_broadcast).sum().float() / float(FLAGS.batch_size)
+            accs.append(accuracy)
+            mean_acc = sum(accs) / len(accs)
+
+            print("Epoch = {}; Batch = {}; Accuracy = {}".format(epoch, i_batch, mean_acc))
+
+            if len(accs) > 5:
+                accs.pop(0)
 
 
 def flags():
@@ -116,8 +137,8 @@ def flags():
     gflags.DEFINE_string("experiment_name", None, "")
 
     # Data settings
-    gflags.DEFINE_string("descr_train", "descriptions.csv", "")
-    gflags.DEFINE_string("descr_dev", "descriptions.csv", "")
+    gflags.DEFINE_string("descr_train", "./utils/descriptions.csv", "")
+    gflags.DEFINE_string("descr_dev", "./utils/descriptions.csv", "")
     gflags.DEFINE_string("train_data", "./utils/imgs/train", "")
     gflags.DEFINE_string("dev_data", "./utils/imgs/dev", "")
     gflags.DEFINE_integer("word_embedding_dim", 100, "")

@@ -1211,6 +1211,8 @@ def run():
                        sender, receiver, desc_dev_dict, map_labels_dev, FLAGS.experiment_name)
         sys.exit()
 
+    myaccs = []
+
     # Training loop
     while epoch < FLAGS.max_epoch:
 
@@ -1366,9 +1368,20 @@ def run():
                                          :, -FLAGS.top_k_train:]).long()
             target_exp = target.view(-1,
                                      1).expand(FLAGS.batch_size, FLAGS.top_k_train)
-            accuracy = (top_k_ind == target_exp.cpu()).sum() / \
+            accuracy = (top_k_ind == target_exp.cpu()).sum().float() / \
                 float(FLAGS.batch_size)
             batch_accuracy.append(accuracy)
+
+            myaccs.append(accuracy)
+            mymean_acc = sum(myaccs) / len(myaccs)
+
+            flogger.Log("Epoch = {}; Step = {}; Batch = {}; Accuracy = {}".format(
+                epoch, step, i_batch, mymean_acc))
+
+            if len(myaccs) > 5:
+                myaccs.pop(0)
+
+            continue
 
             # Print logs regularly
             if step % FLAGS.log_interval == 0:

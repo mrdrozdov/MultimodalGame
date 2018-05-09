@@ -10,7 +10,7 @@ class ExchangeResult(object):
     pass
 
 
-class ExchangeModel(object):
+class ExchangeModel(nn.Module):
     def __init__(self, config):
         super(ExchangeModel, self).__init__()
         self.config = config
@@ -86,7 +86,7 @@ class Exchange(object):
 
     def loglikelihood(self, log_dist, target):
         """
-        Args: 
+        Args:
             log_dist: log softmax scores (N, C) where N is the batch size
               and C is the number of classes
             target: target values (N, 1)
@@ -225,4 +225,4 @@ class Exchange(object):
                 message, message_dist, prediction_log_prob, baseline_scores, entropy_penalty)
 
         return loss, regularization_terms
-        
+
