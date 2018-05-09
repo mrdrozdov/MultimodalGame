@@ -13,18 +13,32 @@ class Trainer(object):
         self.exchange = exchange
         self.length = 10
         self.entropy_penalty = None
+        self.adaptive = False
 
     def extract(self, results, key):
         return [getattr(r, key) for r in results]
+
+    def calculate_loss(self, trainer_loss):
+        loss = 0
+        loss += trainer_loss.sender_message_loss
+        loss += trainer_loss.receiver_message_loss
+        loss += trainer_loss.baseline_loss_sender
+        loss += trainer_loss.baseline_loss_receiver
+        loss += trainer_loss.xent_loss
+        if self.adaptive:
+            loss += trainer_loss.stop_loss
+        return loss
 
     def run_step(self, image, target):
         # TODO: Add support for adaptive length exchange and for length = 1.
         # TODO: Stop-Bit shouldn't be incorporated for fixed length exchange.
         # TODO: Add regularization term.
-        # TODO: Loss for baseline.
 
         results = self.exchange.exchange(image, self.length)
-        masks = None
+        if self.adaptive:
+            raise NotImplementedError
+        else:
+            masks = None
 
         y = self.extract(results, 'y')[-1]
         prediction_log_prob = self.exchange.loglikelihood(y, target.view(target.size(0), 1))
@@ -65,6 +79,8 @@ class Trainer(object):
         trainer_loss.baseline_loss_sender = baseline_loss_sender
         trainer_loss.baseline_loss_receiver = baseline_loss_receiver
         trainer_loss.xent_loss = xent_loss
+        trainer_loss.adaptive = adaptive
+        trainer_loss.y = y
 
         return trainer_loss
         
